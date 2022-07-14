@@ -65,13 +65,13 @@ class LoadData:
         return pd.read_csv(fpath)
 
     @staticmethod
-    def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, seed=0):
+    def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6,seed=0):
         # load data
         df = LoadData.mouseMovement(subjID, task)
         
         # Split data into train and test
         trial_train, trials_val = DataProcessing.split_train_val_trials(
-            df, nTrial_val=6, seed=seed)
+            df, nTrial_val=nTrial_val, seed=seed)
         df_train = df.query(f'trialno in @trial_train')
         df_val = df.query(f'trialno in @trials_val')
         
@@ -126,6 +126,8 @@ class DataProcessing:
         Returns:
             np.array: rolling windowed array
         """
+        if d.shape[0] < wSize:
+            raise ValueError('Data length is shorter than window size')
         d_ = []
         S = 0
         E = S + wSize
@@ -283,4 +285,85 @@ class Plot:
         img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         img = PIL.Image.fromarray(img)
         return img
+    
+    # ---------------------------------------------------------------------------- #
+    #                           Plot traj_and_Reconstruc                           #
+    # ---------------------------------------------------------------------------- #
+    @staticmethod
+    def traj_and_Reconstruc_from_batch(x, y, x_full=None, fig=None, nSegment=24, nCol=5, cmap='viridis'):
+        nBatch = x.shape[0]
+        wSize = x.shape[1]
+        plot_offset = 0
+        
+        # compute starting points of segments
+        start_idx = np.linspace(0, nBatch, nSegment + 1).astype(int)[:-1]
+        nRow = np.ceil((nSegment+1) / nCol).astype(int)
+        
+        # setup colormap
+        if x_full is None:
+            t_len = 301
+        else:
+            t_len = x_full.shape[0]
+        colors = np.linspace(0, 1, t_len)
+        cmap = mpl.cm.get_cmap(cmap)
+
+        # setup figure
+        if fig is None:
+            fig = plt.figure(figsize=(4*nRow, 4*nCol))
+        ax = fig.subplots(nRow, nCol)
+        if ax.ndim == 1:
+            ax = ax.reshape(1, -1)
+
+        # plot full trajectory
+        if x_full is not None:
+            ax[0, 0].plot(x_full[:, 0], x_full[:, 1], '-k', alpha=0.2)
+            ax[0, 0].scatter(x_full[:, 0], x_full[:, 1], c=colors, cmap=cmap)
+            ax[0, 0].plot(0, 0, 'Dr', label='start', markersize=8)
+            ax[0, 0].axis('equal')
+            plot_offset = 1
+
+        for i, si in enumerate(start_idx):
+            iRow, iCol = np.unravel_index(i+plot_offset, (nRow, nCol))
+            
+            # plot ground Truth
+            ax[iRow, iCol].scatter(x[si, :, 0], x[si, :, 1], c=cmap(colors[si:si+wSize]), marker='o')
+            ax[iRow, iCol].plot(x[si, :, 0], x[si, :, 1], 'k', alpha=0.5)
+            ax[iRow, iCol].axis('equal')
+            
+            # plot reconstructed
+            ax[iRow, iCol].plot(y[si, 0, 0], y[si, 0, 1], 'ro', mfc='none', markersize=10)
+            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1], color='red', alpha=0.5)
+            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1], '.', color='red', alpha=0.5)
+            ax[iRow, iCol].axis('equal')
+            ax[iRow, iCol].set_title(f'{si/60:.1f}s~{(si+wSize)/60:.1f}s')
+
+        return fig, ax
+
+    @staticmethod
+    def traj_and_Reconstruc_from_trial(df, trialno, model, wSize=30, **kwargs):
+        # extract data
+        df = df.query(f'trialno == {trialno}')
+        x = DataProcessing.rollingWindow_from_df(df, wSize, 1)
+        
+        # run reconstruction
+        model.eval()
+        x_ = torch.from_numpy(x).double()
+        y = model(x_).detach().cpu().numpy()
+        
+        # cumsum
+        x_cum = x.cumsum(axis=1)
+        y_cum = y.cumsum(axis=1)
+        x_full = df[['x-shift', 'y-shift']].values
+        x_full = x_full.cumsum(axis=0)
+        
+        return Plot.traj_and_Reconstruc_from_batch(x_cum, y_cum, x_full=x_full, **kwargs)
+    
+    @staticmethod
+    def traj_and_Reconstruc_quick_check(subj, task, trialno, model_type='val', **kwargs):
+        import TrajNet_train
+        df = LoadData.mouseMovement(subj, task)
+        model = TrajNet_train.PL_model()
+        path_cp = path_data / 'TrajNet_train' / f'{subj}_one_dot_{model_type}.ckpt'
+        model = model.load_from_checkpoint(path_cp).double()
+        return Plot.traj_and_Reconstruc_from_trial(df, trialno=trialno, model=model, **kwargs)
 
