@@ -11,9 +11,6 @@ import torch
 from einops import rearrange, reduce, repeat
 from torch.utils.data import TensorDataset, DataLoader
 
-
-# %%
-
 # ---------------------------------------------------------------------------- #
 #                                     info                                     #
 # ---------------------------------------------------------------------------- #
@@ -59,10 +56,19 @@ class LoadData:
         pass
 
     @staticmethod
-    def mouseMovement(subjID, task):
+    def mouseMovement(subjID, task, trialno=None):
         fname = f'{subjID}_{task}.csv'
         fpath = path_data / 'Preprocessing' / 'mouseMovement' / fname
-        return pd.read_csv(fpath)
+        df = pd.read_csv(fpath)
+        if trialno is not None:
+            try:
+                df = df.loc[df['trialno'].isin(trialno)]
+            except:
+                try:
+                    df = df.loc[df['trialno'] == trialno]
+                except:
+                    raise ValueError('trialno is not valid')
+        return df
 
     @staticmethod
     def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6,seed=0):
@@ -108,7 +114,7 @@ class DataProcessing:
 
     @staticmethod
     def split_train_val_trials(df, nTrial_val=6, seed=0):
-        trials = set(df['trialno'])
+        trials = set(df['trialno']).difference([0])
         nTrial = len(trials)
         rng = np.random.default_rng(seed)
         trials_val = rng.choice(nTrial, nTrial_val, replace=False)
@@ -146,7 +152,7 @@ class DataProcessing:
         '''
         screensize = ExpInfo.getScreenSise(df)
         d = []
-        trials = df['trialno'].unique()
+        trials = list(set(df['trialno']).difference([0]))
         for trial in trials:
             df_ = df.query(f'trialno == {trial}').copy()
             df_ = df_[["x-shift", "y-shift"]].values
@@ -245,25 +251,6 @@ class SynthData:
 class Plot:
 
     @staticmethod
-    def traj_and_Reconstruc(x, y, ax, legend=True):
-        """ plot trajectory and reconstructed trajectory
-        Args:
-            x: Ground true trajectory
-            y: Reconstructed
-            ax: matplotlib axis
-        """
-
-        x = np.vstack([np.zeros((1, 2)), x])
-        y = np.vstack([np.zeros((1, 2)), y])
-        ax.plot(x[:, 0], x[:, 1], '-')
-        ax.plot(y[:, 0], y[:, 1], '-')
-        ax.plot(0, 0, 'or')
-        ax.axis('equal')
-        if legend:
-            ax.legend(['Ground true trajectory', 'Reconstructed trajectory', 'orig'],
-                    bbox_to_anchor=(1.05, 1), loc=2)
-
-    @staticmethod
     def traj_withColour(x, y, fig, ax):
         colors = np.linspace(0, 1, len(x))
         ax.plot(x, y, '-k', alpha=0.2)
@@ -291,6 +278,8 @@ class Plot:
     # ---------------------------------------------------------------------------- #
     @staticmethod
     def traj_and_Reconstruc_from_batch(x, y, x_full=None, fig=None, nSegment=24, nCol=5, cmap='viridis'):
+        ''' First order function for plotting trajectory and reconstructed trajectory
+        '''
         nBatch = x.shape[0]
         wSize = x.shape[1]
         plot_offset = 0
@@ -341,6 +330,10 @@ class Plot:
 
     @staticmethod
     def traj_and_Reconstruc_from_trial(df, trialno, model, wSize=30, **kwargs):
+        '''
+        Second order function for plotting trajectory and reconstructed trajectory
+        Model is run at this level to get the reconstructed trajectory
+        '''
         # extract data
         df = df.query(f'trialno == {trialno}')
         x = DataProcessing.rollingWindow_from_df(df, wSize, 1)
@@ -360,10 +353,45 @@ class Plot:
     
     @staticmethod
     def traj_and_Reconstruc_quick_check(subj, task, trialno, model_type='val', **kwargs):
-        import TrajNet_train
+        '''Third order function for plotting trajectory and reconstructed trajectory
+        '''
+        # load data
         df = LoadData.mouseMovement(subj, task)
-        model = TrajNet_train.PL_model()
-        path_cp = path_data / 'TrajNet_train' / f'{subj}_one_dot_{model_type}.ckpt'
-        model = model.load_from_checkpoint(path_cp).double()
+        
+        # load model
+        model = Model.load(subj=subj, task=task, model_type=model_type)
         return Plot.traj_and_Reconstruc_from_trial(df, trialno=trialno, model=model, **kwargs)
 
+
+    @staticmethod
+    def traj_and_Reconstruc(x, y, ax, legend=True):
+        """ plot trajectory and reconstructed trajectory simple version 
+        Args:
+            x: Ground true trajectory
+            y: Reconstructed
+            ax: matplotlib axis
+        """
+
+        x = np.vstack([np.zeros((1, 2)), x])
+        y = np.vstack([np.zeros((1, 2)), y])
+        ax.plot(x[:, 0], x[:, 1], '-')
+        ax.plot(y[:, 0], y[:, 1], '-')
+        ax.plot(0, 0, 'or')
+        ax.axis('equal')
+        if legend:
+            ax.legend(['Ground true trajectory', 'Reconstructed trajectory', 'orig'],
+                    bbox_to_anchor=(1.05, 1), loc=2)
+
+
+class Model:
+    
+    @staticmethod
+    def load(subj='K-Reg-S-18', task='one_dot', model_type='val'):
+        ''' Load model from checkpoint
+        '''
+        import TrajNet_train
+        model = TrajNet_train.PL_model()
+        path_cp = path_data / 'TrajNet_train' / f'{subj}_{task}_{model_type}.ckpt'
+        model = model.load_from_checkpoint(path_cp).double().eval()
+        return model
+    
