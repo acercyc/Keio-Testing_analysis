@@ -118,6 +118,24 @@ class TrajNet_tran2tran(nn.Module):
         x = self.dec_conv2(x)
         x = rearrange(x, 'b f t -> b t f')
         return x
+        
+    def decoding(self, x):
+        nTime = x.shape[1]
+        x = repeat(x, 'b f -> b t f', t=nTime)
+        x = rearrange(x, 'b t f -> b f t')
+        x = self.dec_conv1(x)
+        x = rearrange(x, 'b f t -> b t f')
+
+        xy_init = repeat(xy_init, 'b f -> b t f', t=nTime)
+        x = torch.concat([x, xy_init], dim=2)
+        x = self.positionEncoding_sincos(x, dim=self.dim_posEnc)
+        mask = nn.Transformer.generate_square_subsequent_mask(nTime).type_as(x)
+        x = self.decoder(x, mask=mask)
+
+        x = rearrange(x, 'b t f -> b f t')
+        x = self.dec_conv2(x)
+        x = rearrange(x, 'b f t -> b t f')
+        return x
 
 # ---------------------------------------------------------------------------- #
 #                                     LSTM                                     #
@@ -233,6 +251,20 @@ class TrajNet_tran2lstm(nn.Module):
         self.x_hidden = x        
 
         # --------------------------------- decoding --------------------------------- #
+        x = torch.concat([x, xy_init], dim=1)
+        x = repeat(x, 'b f -> b t f', t=nTime)
+        x = rearrange(x, 'b t f -> b f t')
+        x = self.dec_conv1(x)
+        x = rearrange(x, 'b f t -> b t f')
+
+        x = self.decoder(x)
+
+        x = rearrange(x, 'b t f -> b f t')
+        x = self.dec_conv2(x)
+        x = rearrange(x, 'b f t -> b t f')
+        return x
+    
+    def decoding(self, x, xy_init, nTime):
         x = torch.concat([x, xy_init], dim=1)
         x = repeat(x, 'b f -> b t f', t=nTime)
         x = rearrange(x, 'b t f -> b f t')

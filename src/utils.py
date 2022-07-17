@@ -352,14 +352,14 @@ class Plot:
         return Plot.traj_and_Reconstruc_from_batch(x_cum, y_cum, x_full=x_full, **kwargs)
     
     @staticmethod
-    def traj_and_Reconstruc_quick_check(subj, task, trialno, model_type='val', **kwargs):
+    def traj_and_Reconstruc_quick_check(subj, task, trialno, path='TrajNet_train', model_type='val', **kwargs):
         '''Third order function for plotting trajectory and reconstructed trajectory
         '''
         # load data
         df = LoadData.mouseMovement(subj, task)
         
         # load model
-        model = Model.load(subj=subj, task=task, model_type=model_type)
+        model = Model.load(subj=subj, task=task, path=path, model_type=model_type)
         return Plot.traj_and_Reconstruc_from_trial(df, trialno=trialno, model=model, **kwargs)
 
 
@@ -386,12 +386,12 @@ class Plot:
 class Model:
     
     @staticmethod
-    def load(subj='K-Reg-S-18', task='one_dot', model_type='val'):
+    def load(subj='K-Reg-S-18', task='one_dot', model_type='val', path='TrajNet_train'):
         ''' Load model from checkpoint
         '''
         import TrajNet_train
         model = TrajNet_train.PL_model()
-        path_cp = path_data / 'TrajNet_train' / f'{subj}_{task}_{model_type}.ckpt'
+        path_cp = path_data / path / f'{subj}_{task}_{model_type}.ckpt'
         model = model.load_from_checkpoint(path_cp).double().eval()
         return model
     
