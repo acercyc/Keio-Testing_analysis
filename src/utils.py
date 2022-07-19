@@ -10,6 +10,8 @@ import PIL
 import torch
 from einops import rearrange, reduce, repeat
 from torch.utils.data import TensorDataset, DataLoader
+from alive_progress import alive_bar
+
 
 # ---------------------------------------------------------------------------- #
 #                                     info                                     #
@@ -123,6 +125,12 @@ class LoadData:
         for file in files:
             if file.match(f'*{subjID}*{task}_results.csv'):
                 return pd.read_csv(file, index_col=False)
+            
+    @staticmethod
+    def xhy(subj, task, path='TrajNet_xhy'):
+        filepath = path_data / path / f'{subj}_{task}_xhy.npz'
+        d = np.load(filepath, allow_pickle=True)
+        return d['x'], d['h'], d['y'] 
 
 
 class DataProcessing:
@@ -463,3 +471,21 @@ class Analysis:
             plt.show()
         return pca
     
+    @staticmethod
+    def dim_measure(x):
+        pca = Analysis.pca(x)
+        y = pca.explained_variance_ratio_
+        x = np.arange(len(y))
+        return Analysis.fit_function(x, y)[0][0]
+
+
+class GroupOperation:
+    
+    @staticmethod
+    def map(fun, subjs, *args, **kwargs):
+        data = []
+        with alive_bar(len(subjs)) as bar:
+            for i, subj in enumerate(subjs):            
+                data.append(fun(subj, *args, **kwargs)) 
+                bar()       
+        return data
