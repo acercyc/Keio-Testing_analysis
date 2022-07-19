@@ -21,6 +21,8 @@ path_data = path_project / 'data'
 path_data_raw = [path_data/'raw'/'Keio Results',
                  path_data/'raw'/'Komagino Results']
 
+def expon(x, a):
+    return a * np.exp(-a*x)
 
 class ExpInfo:
     bad_subj = ['K-Reg-H-1', 'K-Reg-H-2', 'K-Reg-S-5']
@@ -111,6 +113,14 @@ class LoadData:
 
 
 class DataProcessing:
+    
+    @staticmethod
+    def diff(x, measure='euclidean', offset=1):
+        from scipy.spatial import distance
+        dist = distance.pdist(x, measure)
+        dist = distance.squareform(dist)
+        dist = np.diagonal(dist, offset=offset)
+        return dist
 
     @staticmethod
     def split_train_val_trials(df, nTrial_val=6, seed=0):
@@ -147,7 +157,7 @@ class DataProcessing:
         return d_
 
     @staticmethod
-    def rollingWindow_from_df(df, wSize, interval, pos=False):
+    def rollingWindow_from_df(df, wSize, interval=1, pos=False, bySubj=False):
         ''' Run rolling window function based on trial number
         '''
         screensize = ExpInfo.getScreenSise(df)
@@ -155,9 +165,13 @@ class DataProcessing:
         trials = list(set(df['trialno']).difference([0]))
         for trial in trials:
             df_ = df.query(f'trialno == {trial}').copy()
-            df_ = df_[["x-shift", "y-shift"]].values
+            df_ = df_[["x-shift", "y-shift"]].values / screensize
             d.append(DataProcessing.rollingWindow(df_, wSize, interval, pos=pos))
-        return np.concatenate(d, axis=0) / screensize
+        
+        if bySubj:
+            return d
+        else:
+            return np.concatenate(d, axis=0)
 
     @staticmethod
     def cart2pol(x, y):
@@ -394,4 +408,45 @@ class Model:
         path_cp = path_data / path / f'{subj}_{task}_{model_type}.ckpt'
         model = model.load_from_checkpoint(path_cp).double().eval()
         return model
+    
+
+
+class Analysis:
+    @staticmethod
+    def pca(x, n_components=None, plot_explained_variance=False):
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=n_components)
+        pca.fit(x)
+        if plot_explained_variance:
+            n = len(pca.explained_variance_ratio_)
+            plt.bar(range(n), pca.explained_variance_ratio_.cumsum())
+            plt.xlabel('Number of components')
+            plt.ylabel('Cumulative explained variance')
+            plt.show()
+        return pca.transform(x)
+    
+    @staticmethod
+    def fit_function(x, y, fun=expon, plot=False):
+        from scipy.optimize import curve_fit
+        para = curve_fit(fun, x, y, 0.5)
+        if plot:
+            plt.plot(x, fun(x, *para[0]))
+            plt.plot(x, y)
+        return para
+    
+    @staticmethod
+    def pca(x, n_components=None, normalise=True, plot_explained_variance=False):
+        from sklearn.decomposition import PCA
+        if normalise:
+            from sklearn.preprocessing import scale
+            x = scale(x, axis=0)
+        pca = PCA(n_components=n_components)
+        pca.fit(x)
+        if plot_explained_variance:
+            n = len(pca.explained_variance_ratio_)
+            plt.bar(range(n), pca.explained_variance_ratio_.cumsum())
+            plt.xlabel('Number of components')
+            plt.ylabel('Cumulative explained variance')
+            plt.show()
+        return pca
     
