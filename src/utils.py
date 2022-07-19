@@ -51,6 +51,19 @@ class ExpInfo:
         ids = list(ids)
         ids.sort()
         return ids
+    
+    @staticmethod
+    def getSubjIDs_byGroup():
+        ids = ExpInfo.getSubjIDs()
+        id_H = []
+        id_S = []
+        for id in ids:
+            if 'H' in id:
+                id_H.append(id)
+            else:
+                id_S.append(id)
+        return id_H, id_S
+        
 
 
 class LoadData:
