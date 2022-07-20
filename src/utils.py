@@ -299,6 +299,52 @@ class Plot:
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.legend()
+        
+    @staticmethod
+    def traj_withWeight(x, y, w, align='e', ax=None, seqColormap='viridis', minSize=10, maxSize=200):
+        ''' Plot trajectory with weights
+        align: 'e'(default) end, 's' start, 'c' center
+        '''
+        from sklearn.preprocessing import minmax_scale
+        w = minmax_scale(w, feature_range=(minSize, maxSize))
+        n = len(x)
+        nW = len(w)
+        if align == 's':
+            offset = 0
+        elif align == 'e':
+            offset = n - nW
+        elif align == 'c':
+            offset = (n - nW)//2
+        else:
+            raise ValueError('align must be e, s, or c')
+
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+        # plot line
+        ax.plot(x, y, 'k', alpha=0.3)
+
+        # plot sample points with color
+        cmap = mpl.cm.get_cmap(seqColormap)
+        colors = cmap(range(n))
+        # ax.scatter(x, y, c=colors, s=minSize)
+        ax.scatter(x, y, c='k', s=3, alpha=0.5)
+
+        # plot starting point
+        ax.plot(x[0], y[0], 'dr')
+
+        # plot weights
+        sc = ax.scatter(x[offset:offset+nW], y[offset:offset+nW],
+                        c=colors[offset:offset+nW, :],
+                        s=w,
+                        edgecolors='k',
+                        alpha=0.8)
+        ax.axis('equal')
+        norm = mpl.colors.Normalize(vmin=offset, vmax=offset+nW)
+        cbar = fig.colorbar(mpl.cm.ScalarMappable(cmap=seqColormap, norm=norm), ax=ax)
+        cbar.set_label('Time step')
+        if ax is None:
+            return fig, ax
 
     @staticmethod
     def fig2img(fig):
