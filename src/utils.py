@@ -23,8 +23,10 @@ path_data = path_project / 'data'
 path_data_raw = [path_data/'raw'/'Keio Results',
                  path_data/'raw'/'Komagino Results']
 
+
 def expon(x, a):
     return a * np.exp(-a*x)
+
 
 class ExpInfo:
     bad_subj = ['K-Reg-H-1', 'K-Reg-H-2', 'K-Reg-S-5']
@@ -53,7 +55,7 @@ class ExpInfo:
         ids = list(ids)
         ids.sort()
         return ids
-    
+
     @staticmethod
     def getSubjIDs_byGroup():
         ids = ExpInfo.getSubjIDs()
@@ -65,7 +67,6 @@ class ExpInfo:
             else:
                 id_S.append(id)
         return id_H, id_S
-        
 
 
 class LoadData:
@@ -88,19 +89,21 @@ class LoadData:
         return df
 
     @staticmethod
-    def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6,seed=0):
+    def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6, seed=0):
         # load data
         df = LoadData.mouseMovement(subjID, task)
-        
+
         # Split data into train and test
         trial_train, trials_val = DataProcessing.split_train_val_trials(
             df, nTrial_val=nTrial_val, seed=seed)
         df_train = df.query(f'trialno in @trial_train')
         df_val = df.query(f'trialno in @trials_val')
-        
+
         # rolling
-        d_train = DataProcessing.rollingWindow_from_df(df_train, wSize, interval, pos=pos)
-        d_val = DataProcessing.rollingWindow_from_df(df_val, wSize, interval, pos=pos)
+        d_train = DataProcessing.rollingWindow_from_df(
+            df_train, wSize, interval, pos=pos)
+        d_val = DataProcessing.rollingWindow_from_df(
+            df_val, wSize, interval, pos=pos)
 
         class TrajDataset(torch.utils.data.Dataset):
             def __init__(self, d):
@@ -125,16 +128,16 @@ class LoadData:
         for file in files:
             if file.match(f'*{subjID}*{task}_results.csv'):
                 return pd.read_csv(file, index_col=False)
-            
+
     @staticmethod
     def xhy(subj, task, path='TrajNet_xhy'):
         filepath = path_data / path / f'{subj}_{task}_xhy.npz'
         d = np.load(filepath, allow_pickle=True)
-        return d['x'], d['h'], d['y'] 
+        return d['x'], d['h'], d['y']
 
 
 class DataProcessing:
-    
+
     @staticmethod
     def diff(x, measure='euclidean', offset=1):
         from scipy.spatial import distance
@@ -174,7 +177,7 @@ class DataProcessing:
             E = S + wSize
         d_ = np.stack(d_, axis=0)
         if pos:
-            d_ = d_.cumsum(axis=1)        
+            d_ = d_.cumsum(axis=1)
         return d_
 
     @staticmethod
@@ -187,8 +190,9 @@ class DataProcessing:
         for trial in trials:
             df_ = df.query(f'trialno == {trial}').copy()
             df_ = df_[["x-shift", "y-shift"]].values / screensize
-            d.append(DataProcessing.rollingWindow(df_, wSize, interval, pos=pos))
-        
+            d.append(DataProcessing.rollingWindow(
+                df_, wSize, interval, pos=pos))
+
         if bySubj:
             return d
         else:
@@ -299,7 +303,7 @@ class Plot:
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.legend()
-        
+
     @staticmethod
     def traj_withWeight(x, y, w, align='e', ax=None, seqColormap='viridis', minSize=10, maxSize=200):
         ''' Plot trajectory with weights
@@ -341,8 +345,50 @@ class Plot:
                         alpha=0.8)
         ax.axis('equal')
         norm = mpl.colors.Normalize(vmin=offset, vmax=offset+nW)
-        cbar = fig.colorbar(mpl.cm.ScalarMappable(cmap=seqColormap, norm=norm), ax=ax)
+        cbar = fig.colorbar(mpl.cm.ScalarMappable(
+            cmap=seqColormap, norm=norm), ax=ax)
         cbar.set_label('Time step')
+        if ax is None:
+            return fig, ax
+
+    @staticmethod
+    def traj_withCluster(x, y, labels, align='e', ax=None, seqColormap='viridis'):
+        n = len(x)
+        nW = len(labels)
+        if align == 's':
+            offset = 0
+        elif align == 'e':
+            offset = n - nW
+        elif align == 'c':
+            offset = (n - nW)//2
+        else:
+            raise ValueError('align must be e, s, or c')
+
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+        # plot line
+        ax.plot(x, y, 'k', alpha=0.3)
+
+        # plot starting point
+        ax.plot(x[0], y[0], 'dr')
+
+        # plot labels
+        cmap = mpl.cm.get_cmap('tab20')
+        nCluster = len(set(labels))+1
+        edgecolors = cmap(labels)
+        sc = ax.scatter(x[offset:offset+nW], y[offset:offset+nW],
+                        edgecolors=edgecolors,
+                        s=200,
+                        linewidths=2,
+                        facecolors='none',
+                        alpha=0.8)
+
+        # plot sample points with color
+        cmap = mpl.cm.get_cmap(seqColormap)
+        colors = cmap(range(n))
+        ax.scatter(x, y, c=colors, s=20, alpha=1)
+        ax.axis('equal')
         if ax is None:
             return fig, ax
 
@@ -353,7 +399,7 @@ class Plot:
         img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         img = PIL.Image.fromarray(img)
         return img
-    
+
     # ---------------------------------------------------------------------------- #
     #                           Plot traj_and_Reconstruc                           #
     # ---------------------------------------------------------------------------- #
@@ -364,11 +410,11 @@ class Plot:
         nBatch = x.shape[0]
         wSize = x.shape[1]
         plot_offset = 0
-        
+
         # compute starting points of segments
         start_idx = np.linspace(0, nBatch, nSegment + 1).astype(int)[:-1]
         nRow = np.ceil((nSegment+1) / nCol).astype(int)
-        
+
         # setup colormap
         if x_full is None:
             t_len = 301
@@ -394,16 +440,20 @@ class Plot:
 
         for i, si in enumerate(start_idx):
             iRow, iCol = np.unravel_index(i+plot_offset, (nRow, nCol))
-            
+
             # plot ground Truth
-            ax[iRow, iCol].scatter(x[si, :, 0], x[si, :, 1], c=cmap(colors[si:si+wSize]), marker='o')
+            ax[iRow, iCol].scatter(x[si, :, 0], x[si, :, 1], c=cmap(
+                colors[si:si+wSize]), marker='o')
             ax[iRow, iCol].plot(x[si, :, 0], x[si, :, 1], 'k', alpha=0.5)
             ax[iRow, iCol].axis('equal')
-            
+
             # plot reconstructed
-            ax[iRow, iCol].plot(y[si, 0, 0], y[si, 0, 1], 'ro', mfc='none', markersize=10)
-            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1], color='red', alpha=0.5)
-            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1], '.', color='red', alpha=0.5)
+            ax[iRow, iCol].plot(y[si, 0, 0], y[si, 0, 1],
+                                'ro', mfc='none', markersize=10)
+            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1],
+                                color='red', alpha=0.5)
+            ax[iRow, iCol].plot(y[si, :, 0], y[si, :, 1],
+                                '.', color='red', alpha=0.5)
             ax[iRow, iCol].axis('equal')
             ax[iRow, iCol].set_title(f'{si/60:.1f}s~{(si+wSize)/60:.1f}s')
 
@@ -418,31 +468,31 @@ class Plot:
         # extract data
         df = df.query(f'trialno == {trialno}')
         x = DataProcessing.rollingWindow_from_df(df, wSize, 1)
-        
+
         # run reconstruction
         model.eval()
         x_ = torch.from_numpy(x).double()
         y = model(x_).detach().cpu().numpy()
-        
+
         # cumsum
         x_cum = x.cumsum(axis=1)
         y_cum = y.cumsum(axis=1)
         x_full = df[['x-shift', 'y-shift']].values
         x_full = x_full.cumsum(axis=0)
-        
+
         return Plot.traj_and_Reconstruc_from_batch(x_cum, y_cum, x_full=x_full, **kwargs)
-    
+
     @staticmethod
     def traj_and_Reconstruc_quick_check(subj, task, trialno, path='TrajNet_train', model_type='val', **kwargs):
         '''Third order function for plotting trajectory and reconstructed trajectory
         '''
         # load data
         df = LoadData.mouseMovement(subj, task)
-        
-        # load model
-        model = Model.load(subj=subj, task=task, path=path, model_type=model_type)
-        return Plot.traj_and_Reconstruc_from_trial(df, trialno=trialno, model=model, **kwargs)
 
+        # load model
+        model = Model.load(subj=subj, task=task, path=path,
+                           model_type=model_type)
+        return Plot.traj_and_Reconstruc_from_trial(df, trialno=trialno, model=model, **kwargs)
 
     @staticmethod
     def traj_and_Reconstruc(x, y, ax, legend=True):
@@ -461,11 +511,11 @@ class Plot:
         ax.axis('equal')
         if legend:
             ax.legend(['Ground true trajectory', 'Reconstructed trajectory', 'orig'],
-                    bbox_to_anchor=(1.05, 1), loc=2)
+                      bbox_to_anchor=(1.05, 1), loc=2)
 
 
 class Model:
-    
+
     @staticmethod
     def load(subj='K-Reg-S-18', task='one_dot', model_type='val', path='TrajNet_train'):
         ''' Load model from checkpoint
@@ -475,7 +525,6 @@ class Model:
         path_cp = path_data / path / f'{subj}_{task}_{model_type}.ckpt'
         model = model.load_from_checkpoint(path_cp).double().eval()
         return model
-    
 
 
 class Analysis:
@@ -491,7 +540,7 @@ class Analysis:
             plt.ylabel('Cumulative explained variance')
             plt.show()
         return pca.transform(x)
-    
+
     @staticmethod
     def fit_function(x, y, fun=expon, plot=False):
         from scipy.optimize import curve_fit
@@ -500,7 +549,7 @@ class Analysis:
             plt.plot(x, fun(x, *para[0]))
             plt.plot(x, y)
         return para
-    
+
     @staticmethod
     def pca(x, n_components=None, normalise=True, plot_explained_variance=False):
         from sklearn.decomposition import PCA
@@ -516,7 +565,7 @@ class Analysis:
             plt.ylabel('Cumulative explained variance')
             plt.show()
         return pca
-    
+
     @staticmethod
     def dim_measure(x):
         pca = Analysis.pca(x)
@@ -526,12 +575,12 @@ class Analysis:
 
 
 class GroupOperation:
-    
+
     @staticmethod
     def map(fun, subjs, *args, **kwargs):
         data = []
         with alive_bar(len(subjs)) as bar:
-            for i, subj in enumerate(subjs):            
-                data.append(fun(subj, *args, **kwargs)) 
-                bar()       
+            for i, subj in enumerate(subjs):
+                data.append(fun(subj, *args, **kwargs))
+                bar()
         return data
