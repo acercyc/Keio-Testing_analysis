@@ -352,7 +352,7 @@ class Plot:
             return fig, ax
 
     @staticmethod
-    def traj_withCluster(x, y, labels, align='e', ax=None, seqColormap='viridis'):
+    def traj_withCluster(x, y, labels, align='e', ax=None, seqColormap='viridis', clusterColormap='tab20'):
         n = len(x)
         nW = len(labels)
         if align == 's':
@@ -374,7 +374,7 @@ class Plot:
         ax.plot(x[0], y[0], 'dr')
 
         # plot labels
-        cmap = mpl.cm.get_cmap('tab20')
+        cmap = mpl.cm.get_cmap(clusterColormap)
         nCluster = len(set(labels))+1
         edgecolors = cmap(labels)
         sc = ax.scatter(x[offset:offset+nW], y[offset:offset+nW],
