@@ -27,6 +27,15 @@ path_data_raw = [path_data/'raw'/'Keio Results',
 def expon(x, a):
     return a * np.exp(-a*x)
 
+def labels2idx(labels, minLen=3):
+    minCount = 3
+    unique, counts = np.unique(labels, return_counts=True)
+    seqInfor = dict(zip(unique, counts))
+    seq = {}
+    for k, v in seqInfor.items():
+        if v >= minLen:
+            seq[k] = np.where(labels == k)[0]
+    return seq
 
 class ExpInfo:
     bad_subj = ['K-Reg-H-1', 'K-Reg-H-2', 'K-Reg-S-5']
@@ -127,16 +136,36 @@ class LoadData:
 
         for file in files:
             if file.match(f'*{subjID}*{task}_results.csv'):
-                return pd.read_csv(file, index_col=False)
+                df = pd.read_csv(file, index_col=False)
+                if 'H' in subjID:
+                    df['group'] = 'H'
+                else:
+                    df['group'] = 'S'
+                return df
 
     @staticmethod
     def xhy(subj, task, path='TrajNet_xhy'):
         filepath = path_data / path / f'{subj}_{task}_xhy.npz'
         d = np.load(filepath, allow_pickle=True)
-        return d['x'], d['h'], d['y']
+        x, h, y = d['x'], d['h'], d['y']
+        x = [i.astype(np.float32) for i in x]
+        h = [i.astype(np.float32) for i in h]
+        y = [i.astype(np.float32) for i in y]        
+        return x, h, y 
 
 
 class DataProcessing:
+    
+    @staticmethod
+    def seqSegmentation(seq, dist_threshold, minLen=3):
+        from sklearn.cluster import AgglomerativeClustering
+        connectivity = np.diagflat(np.ones(len(seq)-1), 1)
+        labels = AgglomerativeClustering(n_clusters=None,
+                                        distance_threshold=dist_threshold,
+                                        connectivity=connectivity,
+                                        linkage='average').fit_predict(seq)
+        return labels2idx(labels, minLen=minLen)    
+    
 
     @staticmethod
     def diff(x, measure='euclidean', offset=1):
