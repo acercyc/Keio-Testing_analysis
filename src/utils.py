@@ -135,7 +135,7 @@ class LoadData:
             files += list(datapath.glob('*.*'))
 
         for file in files:
-            if file.match(f'*{subjID}*{task}_results.csv'):
+            if file.match(f'*{subjID}_*{task}_results.csv'):
                 df = pd.read_csv(file, index_col=False)
                 if 'H' in subjID:
                     df['group'] = 'H'
@@ -558,19 +558,6 @@ class Model:
 
 class Analysis:
     @staticmethod
-    def pca(x, n_components=None, plot_explained_variance=False):
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=n_components)
-        pca.fit(x)
-        if plot_explained_variance:
-            n = len(pca.explained_variance_ratio_)
-            plt.bar(range(n), pca.explained_variance_ratio_.cumsum())
-            plt.xlabel('Number of components')
-            plt.ylabel('Cumulative explained variance')
-            plt.show()
-        return pca.transform(x)
-
-    @staticmethod
     def fit_function(x, y, fun=expon, plot=False):
         from scipy.optimize import curve_fit
         para = curve_fit(fun, x, y, 0.5)
@@ -597,6 +584,7 @@ class Analysis:
 
     @staticmethod
     def dim_measure(x):
+        # perform PCA and fit exponential distribution to explained_variance_ratio_
         pca = Analysis.pca(x)
         y = pca.explained_variance_ratio_
         x = np.arange(len(y))
