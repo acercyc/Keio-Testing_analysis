@@ -95,7 +95,35 @@ class LoadData:
                     df = df.loc[df['trialno'] == trialno]
                 except:
                     raise ValueError('trialno is not valid')
+        df = df.loc[df["trialno"] != 0]
         return df
+    
+    @staticmethod
+    def mouseMovement_array(subj, task, velocity=False):
+        ''' return array of mouse movement: (xy[trial...], xy_show[trial...])
+        '''
+        df = LoadData.mouseMovement(subj, task)
+        screenSize = ExpInfo.getScreenSise(df)
+        trials = set(df['trialno'])
+        xy = []
+        xy_show = []
+        for trial in trials:
+            df_ = df.query(f'trialno == {trial}').copy()
+            xy_ = df_[["x-shift", "y-shift"]].values / screenSize
+            
+            if (task == 'one_dot') or (task == 'reaching'):
+                xy_show_ = df_[['dot-x', 'dot-y']].values / screenSize
+            elif task == 'three_dot':
+                xy_show_ = df_[['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3']].values / screenSize
+            
+            if velocity:
+                xy_ = xy_[:-1, :]
+                xy_show_ = np.diff(xy_show_, axis=0)
+                
+            xy.append(xy_)
+            xy_show.append(xy_show_)
+        
+        return xy, xy_show
 
     @staticmethod
     def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6, seed=0):
@@ -149,9 +177,9 @@ class LoadData:
         filepath = path_data / path / f'{subj}_{task}_xhy.npz'
         d = np.load(filepath, allow_pickle=True)
         x, h, y = d['x'], d['h'], d['y']
-        x = [i.astype(np.float32) for i in x]
-        h = [i.astype(np.float32) for i in h]
-        y = [i.astype(np.float32) for i in y]        
+        x = [i.astype(float) for i in x]
+        h = [i.astype(float) for i in h]
+        y = [i.astype(float) for i in y]        
         return x, h, y 
 
 
@@ -597,7 +625,7 @@ class GroupOperation:
     @staticmethod
     def map(fun, subjs, *args, **kwargs):
         data = []
-        with alive_bar(len(subjs)) as bar:
+        with alive_bar(len(subjs), force_tty=True) as bar:
             for i, subj in enumerate(subjs):
                 data.append(fun(subj, *args, **kwargs))
                 bar()

@@ -13,8 +13,15 @@ Data save to *..\data\Preprocessing*
 ``/TrajNet_testing/``: some testing files
 
 ## Training
-`TrajNet_train.py`: Training script. Take subjID as CL argument 
+`TrajNet_train.py`: Training script. Take subjID as CL argument  
 `TrajNet_train_run2.py` & `TrajNet_train_run2.py`: Run TrajNet_train
 
 ## Forward swap 
 `TrajNet_save_forward_data_by_trial` run forward_call by trial and save x, h, y to data\TrajNet_xhy
+
+
+# Analysis
+`test_seqLen_dim.ipynb`: Examine dimensionality on different sequence lengths 
+
+# Behavioral data
+`ana_behavioral_results.ipynb`: Behavioral result summary
