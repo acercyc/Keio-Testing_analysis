@@ -137,6 +137,7 @@ class LoadData:
         for file in files:
             if file.match(f'*{subjID}_*{task}_results.csv'):
                 df = pd.read_csv(file, index_col=False)
+                df['participant'] = df['participant'].str.strip()
                 if 'H' in subjID:
                     df['group'] = 'H'
                 else:
