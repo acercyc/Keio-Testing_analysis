@@ -37,9 +37,19 @@ def labels2idx(labels, minLen=3):
             seq[k] = np.where(labels == k)[0]
     return seq
 
+def obj2type(x, astype=np.float64):
+    try:
+        return x.astype(astype)
+    except:
+        return [obj2type(i, astype) for i in x]
+
 class ExpInfo:
     bad_subj = ['K-Reg-H-1', 'K-Reg-H-2', 'K-Reg-S-5']
     taskName = ['one_dot', 'three_dot', 'reaching']
+    traj_columns_motor = ["x-shift", "y-shift"]
+    traj_columns_disp = [['dot-x', 'dot-y'], 
+                         ['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3'],
+                         ['dot-x', 'dot-y']]
 
     @staticmethod
     def getScreenSise(df):
@@ -100,30 +110,31 @@ class LoadData:
     
     @staticmethod
     def mouseMovement_array(subj, task, velocity=False):
-        ''' return array of mouse movement: (xy[trial...], xy_show[trial...])
+        ''' return array of mouse movement: ([[trial_1], [trial_2]], [[trial_1], [trial_2]])
         '''
         df = LoadData.mouseMovement(subj, task)
         screenSize = ExpInfo.getScreenSise(df)
         trials = set(df['trialno'])
         xy = []
-        xy_show = []
+        xy_disp = []
         for trial in trials:
             df_ = df.query(f'trialno == {trial}').copy()
             xy_ = df_[["x-shift", "y-shift"]].values / screenSize
             
             if (task == 'one_dot') or (task == 'reaching'):
-                xy_show_ = df_[['dot-x', 'dot-y']].values / screenSize
+                xy_disp_ = df_[['dot-x', 'dot-y']].values / screenSize
             elif task == 'three_dot':
-                xy_show_ = df_[['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3']].values / screenSize
+                xy_disp_ = df_[['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3']].values / screenSize
             
             if velocity:
                 xy_ = xy_[:-1, :]
-                xy_show_ = np.diff(xy_show_, axis=0)
+                xy_disp_ = np.diff(xy_disp_, axis=0)
                 
             xy.append(xy_)
-            xy_show.append(xy_show_)
+            xy_disp.append(xy_disp_)
         
-        return xy, xy_show
+        
+        return xy, xy_disp
 
     @staticmethod
     def mouseMovementRollingData(subjID='K-Reg-S-18', task='one_dot', wSize=48, interval=1, pos=False, nTrial_val=6, seed=0):
@@ -181,6 +192,15 @@ class LoadData:
         h = [i.astype(float) for i in h]
         y = [i.astype(float) for i in y]        
         return x, h, y 
+    
+    @staticmethod
+    def xhy_disp(subj, task, path='TrajNet_xhy'):
+        filepath = path_data / path / f'{subj}_{task}_xhy_disp.npz'
+        d = np.load(filepath, allow_pickle=True)
+        x, h, y = d['x'], d['h'], d['y']
+        x, h, y = obj2type(x), obj2type(h), obj2type(y)     
+        return x, h, y 
+    
 
 
 class DataProcessing:
@@ -239,7 +259,7 @@ class DataProcessing:
         return d_
 
     @staticmethod
-    def rollingWindow_from_df(df, wSize, interval=1, pos=False, bySubj=False):
+    def rollingWindow_from_df(df, wSize, interval=1, pos=False, returnWithTrial=False):
         ''' Run rolling window function based on trial number
         '''
         screensize = ExpInfo.getScreenSise(df)
@@ -251,7 +271,7 @@ class DataProcessing:
             d.append(DataProcessing.rollingWindow(
                 df_, wSize, interval, pos=pos))
 
-        if bySubj:
+        if returnWithTrial:
             return d
         else:
             return np.concatenate(d, axis=0)

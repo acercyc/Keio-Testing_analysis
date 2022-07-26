@@ -17,7 +17,7 @@ task = utils.ExpInfo.taskName[1]
 # %%
 for subj in subjs:
     df = utils.LoadData.mouseMovement(subj, task)
-    d = utils.DataProcessing.rollingWindow_from_df(df, 60, 1, bySubj=True)
+    d = utils.DataProcessing.rollingWindow_from_df(df, 60, 1, returnWithTrial=True)
     model = utils.Model.load(subj, utils.ExpInfo.taskName[0], path='TrajNet_train_onUse').eval()
     model = model.cuda()
     H = []

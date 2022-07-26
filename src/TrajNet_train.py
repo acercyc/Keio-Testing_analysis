@@ -54,7 +54,7 @@ class PL_model(pl.LightningModule):
     def __init__(self):
         super(PL_model, self).__init__()
         self.model = models.TrajNet_tran2lstm(**config_model)
-        self.fig = plt.figure()
+        self.fig = None
     
     def forward(self, x):
         return self.model(x)
@@ -103,6 +103,9 @@ class PL_model(pl.LightningModule):
         return val_loss
     
     def validation_epoch_end(self, validation_step_outputs):
+        if self.fig is None:
+            self.fig = plt.figure()
+            
         self.fig.clear()
         if type(validation_step_outputs) is list:
             validation_step_outputs = validation_step_outputs[0]
