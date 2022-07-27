@@ -17,8 +17,8 @@ Data save to *..\data\Preprocessing*
 `TrajNet_train_run2.py` & `TrajNet_train_run2.py`: Run TrajNet_train
 
 ## Forward swap 
-`TrajNet_save_forward_data_by_trial` run forward_call by trial and save x, h, y to data\TrajNet_xhy
-
+`TrajNet_save_forward_data_by_trial_{task}` run forward_call by trial for motor data and save x, h, y to data\TrajNet_xhy
+`TrajNet_save_forward_data_by_trial_{task}_disp.py` run forward_call for disp data by trial and save x, h, y to data\TrajNet_xhy
 
 # Analysis
 `test_seqLen_dim.ipynb`: Examine dimensionality on different sequence lengths 
