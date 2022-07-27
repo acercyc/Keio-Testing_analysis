@@ -368,7 +368,9 @@ class SynthData:
 class Plot:
 
     @staticmethod
-    def traj_withColour(x, y, fig, ax):
+    def traj_withColour(x, y, fig=None, ax=None):
+        if fig is None:
+            fig, ax = plt.subplots()
         colors = np.linspace(0, 1, len(x))
         ax.plot(x, y, '-k', alpha=0.2)
         ax.scatter(x, y, c=colors, cmap='turbo')
@@ -381,6 +383,7 @@ class Plot:
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.legend()
+        return fig, ax
 
     @staticmethod
     def traj_withWeight(x, y, w, align='e', ax=None, seqColormap='viridis', minSize=10, maxSize=200):
@@ -595,7 +598,7 @@ class Plot:
 class Model:
 
     @staticmethod
-    def load(subj='K-Reg-S-18', task='one_dot', model_type='val', path='TrajNet_train'):
+    def load(subj='K-Reg-S-18', task='one_dot', model_type='val', path='TrajNet_train_onUse'):
         ''' Load model from checkpoint
         '''
         import TrajNet_train
@@ -650,3 +653,16 @@ class GroupOperation:
                 data.append(fun(subj, *args, **kwargs))
                 bar()
         return data
+    
+    
+class test:
+    @staticmethod
+    def quick_forward(subj, x, device='cuda'):
+        model = Model.load(subj).to(device)
+        x = torch.from_numpy(x).double().to(device)
+        y = model.forward(x)
+        h = model.model.x_hidden
+        y = y.detach().cpu().numpy()
+        h = h.detach().cpu().numpy()
+        return h, y
+    
