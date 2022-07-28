@@ -49,8 +49,8 @@ for subj in subjs:
     H = np.array(H, dtype=object)
     Y = np.array(Y, dtype=object)
 
-    savepath_ = savepath / f'{subj}_{task}_xhy_disp.npz'
+    savepath_ = savepath / f'{subj}_{task}_xhy_disp_{wSize}.npz'
     np.savez(str(savepath_), x=X, y=Y, h=H)
-    print(f'{subj}_{task}_xhy_disp.npz saved')
+    print(f'{subj}_{task}_xhy_disp_{wSize}.npz saved')
 
 

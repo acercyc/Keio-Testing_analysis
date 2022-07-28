@@ -11,6 +11,7 @@ import torch
 from einops import rearrange, reduce, repeat
 from torch.utils.data import TensorDataset, DataLoader
 from alive_progress import alive_bar
+from sklearn.preprocessing import StandardScaler, scale
 
 
 # ---------------------------------------------------------------------------- #
@@ -284,6 +285,7 @@ class DataProcessing:
 
     @staticmethod
     def positionEncoding_sincos_mat(nTime, dim=4, max_length=300):
+        ''' Position encoding matrix '''
         x = np.arange(nTime) * 2 * np.pi / max_length
         x = np.tile(x, (dim, 1)).T  # t f
         x = x * np.arange(1, dim+1)
@@ -292,11 +294,19 @@ class DataProcessing:
 
     @staticmethod
     def seqTrim(x, minTime):
+        ''' Trim the sequence to the minimum timeshift'''
         # x: b t f
         tLen = np.random.randint(minTime, x.shape[1])
         sTime = np.random.randint(0, x.shape[1]-tLen)
         eTime = sTime + tLen
         return x[:, sTime:eTime, :]
+    
+    @staticmethod
+    def standardise_list(xList):
+        ''' Standardise list of arrays'''
+        xList_ = np.concatenate(xList, axis=0)
+        scale = StandardScaler().fit(xList_)
+        return [scale.transform(x) for x in xList]
 
 
 class SynthData:
