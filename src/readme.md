@@ -23,5 +23,8 @@ Data save to *..\data\Preprocessing*
 # Analysis
 `test_seqLen_dim.ipynb`: Examine dimensionality on different sequence lengths 
 
+## Three dot exp
+`ana_three_dot_predicting_individual_beh_profile.ipynb`: Predicting choice by position and velocity of action plans
+
 # Behavioral data
 `ana_behavioral_results.ipynb`: Behavioral result summary

@@ -28,6 +28,7 @@ path_data_raw = [path_data/'raw'/'Keio Results',
 def expon(x, a):
     return a * np.exp(-a*x)
 
+
 def labels2idx(labels, minLen=3):
     minCount = 3
     unique, counts = np.unique(labels, return_counts=True)
@@ -38,18 +39,28 @@ def labels2idx(labels, minLen=3):
             seq[k] = np.where(labels == k)[0]
     return seq
 
+
 def obj2type(x, astype=np.float64):
     try:
         return x.astype(astype)
     except:
         return [obj2type(i, astype) for i in x]
 
+
+def findMax(x):
+    ''' find the max value and its index '''
+    max_ = np.max(x)
+    max_idx = np.unravel_index(np.argmax(x, axis=None), x.shape)
+    return max_, max_idx
+
+
 class ExpInfo:
     bad_subj = ['K-Reg-H-1', 'K-Reg-H-2', 'K-Reg-S-5']
     taskName = ['one_dot', 'three_dot', 'reaching']
     traj_columns_motor = ["x-shift", "y-shift"]
-    traj_columns_disp = [['dot-x', 'dot-y'], 
-                         ['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3'],
+    traj_columns_disp = [['dot-x', 'dot-y'],
+                         ['dot-x1', 'dot-y1', 'dot-x2',
+                             'dot-y2', 'dot-x3', 'dot-y3'],
                          ['dot-x', 'dot-y']]
 
     @staticmethod
@@ -108,7 +119,7 @@ class LoadData:
                     raise ValueError('trialno is not valid')
         df = df.loc[df["trialno"] != 0]
         return df
-    
+
     @staticmethod
     def mouseMovement_array(subj, task, velocity=False):
         ''' return array of mouse movement: ([[trial_1], [trial_2]], [[trial_1], [trial_2]])
@@ -121,20 +132,20 @@ class LoadData:
         for trial in trials:
             df_ = df.query(f'trialno == {trial}').copy()
             xy_ = df_[["x-shift", "y-shift"]].values / screenSize
-            
+
             if (task == 'one_dot') or (task == 'reaching'):
                 xy_disp_ = df_[['dot-x', 'dot-y']].values / screenSize
             elif task == 'three_dot':
-                xy_disp_ = df_[['dot-x1', 'dot-y1', 'dot-x2', 'dot-y2', 'dot-x3', 'dot-y3']].values / screenSize
-            
+                xy_disp_ = df_[['dot-x1', 'dot-y1', 'dot-x2',
+                                'dot-y2', 'dot-x3', 'dot-y3']].values / screenSize
+
             if velocity:
                 xy_ = xy_[:-1, :]
                 xy_disp_ = np.diff(xy_disp_, axis=0)
-                
+
             xy.append(xy_)
             xy_disp.append(xy_disp_)
-        
-        
+
         return xy, xy_disp
 
     @staticmethod
@@ -185,37 +196,35 @@ class LoadData:
                 return df
 
     @staticmethod
-    def xhy(subj, task, path='TrajNet_xhy'):
-        filepath = path_data / path / f'{subj}_{task}_xhy.npz'
+    def xhy(subj, task, wSize=60, path='TrajNet_xhy'):
+        filepath = path_data / path / f'{subj}_{task}_xhy_{wSize}.npz'
         d = np.load(filepath, allow_pickle=True)
         x, h, y = d['x'], d['h'], d['y']
-        x = [i.astype(float) for i in x]
-        h = [i.astype(float) for i in h]
-        y = [i.astype(float) for i in y]        
-        return x, h, y 
-    
+        x = obj2type(x)
+        h = obj2type(h)
+        y = obj2type(y)
+        return x, h, y
+
     @staticmethod
-    def xhy_disp(subj, task, path='TrajNet_xhy'):
-        filepath = path_data / path / f'{subj}_{task}_xhy_disp.npz'
+    def xhy_disp(subj, task, wSize=60, path='TrajNet_xhy'):
+        filepath = path_data / path / f'{subj}_{task}_xhy_disp_{wSize}.npz'
         d = np.load(filepath, allow_pickle=True)
         x, h, y = d['x'], d['h'], d['y']
-        x, h, y = obj2type(x), obj2type(h), obj2type(y)     
-        return x, h, y 
-    
+        x, h, y = obj2type(x), obj2type(h), obj2type(y)
+        return x, h, y
 
 
 class DataProcessing:
-    
+
     @staticmethod
     def seqSegmentation(seq, dist_threshold, minLen=3):
         from sklearn.cluster import AgglomerativeClustering
         connectivity = np.diagflat(np.ones(len(seq)-1), 1)
         labels = AgglomerativeClustering(n_clusters=None,
-                                        distance_threshold=dist_threshold,
-                                        connectivity=connectivity,
-                                        linkage='average').fit_predict(seq)
-        return labels2idx(labels, minLen=minLen)    
-    
+                                         distance_threshold=dist_threshold,
+                                         connectivity=connectivity,
+                                         linkage='average').fit_predict(seq)
+        return labels2idx(labels, minLen=minLen)
 
     @staticmethod
     def diff(x, measure='euclidean', offset=1):
@@ -300,7 +309,7 @@ class DataProcessing:
         sTime = np.random.randint(0, x.shape[1]-tLen)
         eTime = sTime + tLen
         return x[:, sTime:eTime, :]
-    
+
     @staticmethod
     def standardise_list(xList):
         ''' Standardise list of arrays'''
@@ -651,6 +660,41 @@ class Analysis:
         y = pca.explained_variance_ratio_
         x = np.arange(len(y))
         return Analysis.fit_function(x, y)[0][0]
+    
+    @staticmethod
+    def auc_oneVsOthers(x):
+        ''' compute AUC for one vs others
+        x: sample x class 
+        '''
+        from sklearn import metrics 
+        auc = []
+        for i in range(x.shape[1]):
+            y_true = np.zeros(x.shape)
+            y_true[:, i] = 1
+            fpr, tpr, thresholds = metrics.roc_curve(y_true.flatten(), -x.flatten())
+            auc.append(metrics.auc(fpr, tpr))
+        return np.hstack(auc)    
+    
+    @staticmethod
+    def argmin_ratio(x):
+        ''' the ratio of the class with minimal value at each sample point
+        x: sample x class 
+        '''
+        iMin = x.argmin(axis=1)
+        unique, counts = np.unique(iMin, return_counts=True)
+        b = np.zeros(3)
+        for i, j in zip(unique, counts):
+            b[i] = j
+        return b / x.shape[0]
+    
+    @staticmethod
+    def class_in_topN(dist_timeSeries):
+        n, nc = dist_timeSeries.shape
+        labels = np.ones_like(dist_timeSeries) * np.arange(nc)
+        topN = np.argsort(dist_timeSeries.flatten())[0:n]
+        topN = labels.flatten()[topN]
+        ratio = [np.sum(topN == i) / n  for i in range(nc)]
+        return ratio
 
 
 class GroupOperation:
@@ -658,13 +702,25 @@ class GroupOperation:
     @staticmethod
     def map(fun, subjs, *args, **kwargs):
         data = []
-        with alive_bar(len(subjs), force_tty=True) as bar:
+        with alive_bar(len(subjs), force_tty=True, title='Group loop') as bar:
             for i, subj in enumerate(subjs):
                 data.append(fun(subj, *args, **kwargs))
                 bar()
         return data
-    
-    
+
+
+    @staticmethod
+    def map_trial(fun, trials):
+        ''' run trial loop for funtion with iTrial as input
+        trials: list of trial numbers
+        '''
+        data = []
+        # with alive_bar(len(trials), force_tty=True, title='Trial loop') as bar:
+        for trial in trials:
+            data.append(fun(trial))
+            # bar()
+        return data
+
 class test:
     @staticmethod
     def quick_forward(subj, x, device='cuda'):
@@ -675,4 +731,3 @@ class test:
         y = y.detach().cpu().numpy()
         h = h.detach().cpu().numpy()
         return h, y
-    
