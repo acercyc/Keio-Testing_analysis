@@ -625,6 +625,29 @@ class Model:
         path_cp = path_data / path / f'{subj}_{task}_{model_type}.ckpt'
         model = model.load_from_checkpoint(path_cp).double().eval()
         return model
+    
+    
+    @staticmethod
+    def quick_forward(subj, x):
+        ''' passing x to subj's model
+        x can be a list of numpy array or a numpy array
+        '''
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = Model.load(subj).to(device)
+        if type(x) is not list:
+            x = [x]            
+        h = []
+        y = []
+        for x_ in x:
+            x_ = torch.from_numpy(x_).double().to(device)
+            y_ = model.forward(x_)
+            h_ = model.model.x_hidden
+            y.append(y_.detach().cpu().numpy())
+            h.append(h_.detach().cpu().numpy())    
+        if type(x) is not list:
+            y = y[0] 
+            h = h[0]
+        return h, y    
 
 
 class Analysis:
@@ -696,6 +719,20 @@ class Analysis:
         ratio = [np.sum(topN == i) / n  for i in range(nc)]
         return ratio
 
+    @staticmethod
+    def rsa(X, dist_measure='euclidean'):
+        '''
+        X: list of numpy arrays. 
+        X[i] i is subjects.
+        X[i] is a 2D array samples x fetures
+        First, we calculate distance matrix between each pair of samples for each subject
+        Then, we compute the similarity of the distance matrix between each subjects
+        Finally, return the similarity matrix
+        '''
+        from sklearn.metrics import pairwise_distances
+        dist_mat = [pairwise_distances(x, metric=dist_measure).flatten() for x in X]
+        dist_mat = np.vstack(dist_mat)
+        return np.corrcoef(dist_mat)    
 
 class GroupOperation:
 
@@ -723,11 +760,21 @@ class GroupOperation:
 
 class test:
     @staticmethod
-    def quick_forward(subj, x, device='cuda'):
+    def quick_forward(subj, x):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = Model.load(subj).to(device)
-        x = torch.from_numpy(x).double().to(device)
-        y = model.forward(x)
-        h = model.model.x_hidden
-        y = y.detach().cpu().numpy()
-        h = h.detach().cpu().numpy()
+        if type(x) is not list:
+            x = [x]
+            
+        h = []
+        y = []
+        for x_ in x:
+            x_ = torch.from_numpy(x_).double().to(device)
+            y_ = model.forward(x_)
+            h_ = model.model.x_hidden
+            y.append(y_.detach().cpu().numpy())
+            h.append(h_.detach().cpu().numpy())    
+        if type(x) is not list:
+            y = y[0] 
+            h = h[0]
         return h, y

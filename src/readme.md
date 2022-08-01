@@ -26,5 +26,8 @@ Data save to *..\data\Preprocessing*
 ## Three dot exp
 `ana_three_dot_predicting_individual_beh_profile.ipynb`: Predicting choice by position and velocity of action plans
 
+## Reaching
+`ana_reaching_difficulty.ipynb` : Analyze difficulty of reaching task
+
 # Behavioral data
 `ana_behavioral_results.ipynb`: Behavioral result summary
