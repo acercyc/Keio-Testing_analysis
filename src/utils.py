@@ -62,6 +62,7 @@ class ExpInfo:
                          ['dot-x1', 'dot-y1', 'dot-x2',
                              'dot-y2', 'dot-x3', 'dot-y3'],
                          ['dot-x', 'dot-y']]
+    screenSize = np.array((1900, 1060))
 
     @staticmethod
     def getScreenSise(df):
@@ -238,6 +239,11 @@ class DataProcessing:
     def split_train_val_trials(df, nTrial_val=6, seed=0):
         trials = set(df['trialno']).difference([0])
         nTrial = len(trials)
+        """_summary_
+
+        Returns:
+            _type_: _description_
+        """        
         rng = np.random.default_rng(seed)
         trials_val = rng.choice(nTrial, nTrial_val, replace=False)
         trial_train = trials.difference(trials_val)
@@ -382,6 +388,51 @@ class SynthData:
             ax.plot(data[0, :, 1])
             ax.plot(data[0, :, 0])
         return data
+    
+    @staticmethod
+    def genReachingSeq(nReach=10, time=5, fs=60, velocity=True, seed=0):
+        ''' Generate a sequence of reaching motion '''
+        # reproducibility 
+        rng = np.random.default_rng(seed)
+        
+        # --------------------------- locate target points --------------------------- #
+        screenSize = ExpInfo.screenSize / (ExpInfo.screenSize.max())
+        toCentre = screenSize[1]/2 * (4/3)
+        
+        # define 4 target points
+        targetsLocation = np.array([[-toCentre, 0], [toCentre, 0], [0, -toCentre], [0, toCentre]])
+        
+        # --------------------------- random select targets -------------------------- #
+        targetSet = np.arange(4)
+        iTarget = [rng.choice(targetSet)]
+        for i in range(1, nReach):
+            targetSet_ = targetSet
+            targetSet_ = np.delete(targetSet_, iTarget[-1])
+            iTarget.append(rng.choice(targetSet_, 1))
+        iTarget = np.hstack(iTarget)
+        
+        # ----------------------- interpolate reaching sequence ---------------------- #
+        tp = time * fs # number of samples
+        target = np.vstack([[0, 0], targetsLocation[iTarget]])
+        itp = np.linspace(0, tp, nReach+1).astype(int)
+        x = np.interp(np.arange(tp), itp, target[:, 0])
+        y = np.interp(np.arange(tp), itp, target[:, 1])
+        if velocity:
+            x = np.diff(x)
+            y = np.diff(y)
+        xy = np.vstack([x, y]).T
+        return xy, target
+    
+    @staticmethod
+    def genReachingSeq_trial(nTrial, seed=0, **kwargs):
+        xy = []
+        target = []
+        for i in range(nTrial):
+            xy_, target_ = SynthData.genReachingSeq(seed=i+seed, **kwargs)
+            xy.append(xy_)
+            target.append(target_)
+        return xy, target
+            
 
 
 class Plot:
@@ -634,7 +685,8 @@ class Model:
         '''
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = Model.load(subj).to(device)
-        if type(x) is not list:
+        isList = type(x) is list
+        if not isList:
             x = [x]            
         h = []
         y = []
@@ -643,8 +695,8 @@ class Model:
             y_ = model.forward(x_)
             h_ = model.model.x_hidden
             y.append(y_.detach().cpu().numpy())
-            h.append(h_.detach().cpu().numpy())    
-        if type(x) is not list:
+            h.append(h_.detach().cpu().numpy())   
+        if not isList:
             y = y[0] 
             h = h[0]
         return h, y    
