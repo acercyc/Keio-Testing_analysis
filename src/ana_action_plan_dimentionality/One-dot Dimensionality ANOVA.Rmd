@@ -1,0 +1,52 @@
+---
+title: "One-dot Dimensionality ANOVA"
+output: html_notebook
+---
+```{r}
+library(rstatix)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r}
+colnames(dim_data) = make.names(colnames(dim_data))
+dim_data$actual.control = factor(dim_data$actual.control)
+dim_data$angular.bias = factor(dim_data$angular.bias)
+dim_data$group = factor(dim_data$group)
+```
+
+```{r}
+mean(dim_data$dim)
+```
+
+```{r}
+dim_data_t <- dim_data %>% group_by(participant, actual.control, angular.bias, group)
+dim_data_t <- dim_data_t %>% summarise(dim.avg = mean(dim)) %>% ungroup()
+dim_data_t
+```
+
+# Three way anova
+
+```{r}
+anova_test(dim_data_t, dv=dim.avg, wid=participant, within = c(actual.control, angular.bias), between=group, type=3)
+```
+
+
+```{r}
+result <- anova_test(dim_data_t%>%group_by(group), dv=dim.avg, wid=participant, within = c(actual.control, angular.bias), type=3)
+```
+
+# health group 2-way anova
+
+```{r}
+print(result$anova[1])
+```
+
+# patient group 2-way anova
+
+```{r}
+print(result$anova[2])
+
+```
+
