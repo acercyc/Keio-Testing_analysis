@@ -830,3 +830,11 @@ class test:
             y = y[0] 
             h = h[0]
         return h, y
+
+
+class Save:
+    @staticmethod
+    def savepath(fn):
+        pathname = path_data / fn
+        pathname.mkdir(parents=True, exist_ok=True)
+        return pathname    

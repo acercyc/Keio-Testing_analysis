@@ -31,3 +31,7 @@ Data save to *..\data\Preprocessing*
 
 # Behavioral data
 `ana_behavioral_results.ipynb`: Behavioral result summary
+
+# Visualisation 
+`vis_traj.ipynb`: Visualise trajectory  
+`vis_decoding.ipynb`: Visualise decoding results
