@@ -23,6 +23,10 @@ Data save to *..\data\Preprocessing*
 # Analysis
 `test_seqLen_dim.ipynb`: Examine dimensionality on different sequence lengths 
 
+## One dot exp
+`ana_one_dot_noise_estimation_multivariate_normal`:  
+In a trial, compute distance between true and displyed action plan. This results in a distance distribution. Fit the distribution to a multivariate normal distribution. Then compute the probability of "origin" and all distnaces to the distribution. Compute the rank of the origin with all distnaces. 
+
 ## Three dot exp
 `ana_three_dot_predicting_individual_beh_profile.ipynb`: Predicting choice by position and velocity of action plans
 
