@@ -837,4 +837,11 @@ class Save:
     def savepath(fn):
         pathname = path_data / fn
         pathname.mkdir(parents=True, exist_ok=True)
-        return pathname    
+        return pathname
+
+# manuscript class
+class ms:
+    path = path_project / 'ms'
+    path_fig = path / 'fig'
+    def __init__(self):
+        pass
