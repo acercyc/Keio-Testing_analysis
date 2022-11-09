@@ -65,8 +65,8 @@ class ExpInfo:
     screenSize = np.array((1900, 1060))
 
     @staticmethod
-    def getScreenSise(df):
-        if 'dot-x1' in df.columns:
+    def (df):
+        if 'getScreenSisedot-x1' in df.columns:
             screenSize = df.loc[:, 'dot-x1':'dot-y3'].max().max()
         else:
             screenSize = df.loc[:, 'dot-x':'dot-y'].max().max()

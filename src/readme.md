@@ -39,3 +39,5 @@ In a trial, compute distance between true and displyed action plan. This results
 # Visualisation 
 `vis_traj.ipynb`: Visualise trajectory  
 `vis_decoding.ipynb`: Visualise decoding results
+
+# Manuscript
