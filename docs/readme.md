@@ -1,8 +1,2 @@
-[model](model.md)
-
-[[ana]]
-[[analysis]]
-
-[preprocessing](preprocessing.md)
-
-[[test]]
+# Pages
+[analysis](analysis.md)
