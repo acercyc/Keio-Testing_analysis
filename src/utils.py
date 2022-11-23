@@ -834,10 +834,10 @@ class test:
 
 class Save:
     @staticmethod
-    def savepath(fn):
-        pathname = path_data / fn
+    def savepath(folder, filename):
+        pathname = path_data / folder
         pathname.mkdir(parents=True, exist_ok=True)
-        return pathname
+        return str(pathname / filename)
 
 # manuscript class
 class ms:
