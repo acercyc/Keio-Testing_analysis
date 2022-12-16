@@ -436,6 +436,7 @@ class SynthData:
 
 
 class Plot:
+    palette_group = ['#A96FBD','#6F89BD']
 
     @staticmethod
     def traj_withColour(x, y, fig=None, ax=None):
