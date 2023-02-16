@@ -66,7 +66,7 @@ class ExpInfo:
 
     @staticmethod
     def getScreenSise(df):
-        if 'getScreenSisedot-x1' in df.columns:
+        if 'dot-x1' in df.columns:
             screenSize = df.loc[:, 'dot-x1':'dot-y3'].max().max()
         else:
             screenSize = df.loc[:, 'dot-x':'dot-y'].max().max()
@@ -122,7 +122,7 @@ class LoadData:
         return df
 
     @staticmethod
-    def mouseMovement_array(subj, task, velocity=False):
+    def mouseMovement_array(subj, task, velocity=False, packDot=False):
         ''' return array of mouse movement: ([[trial_1], [trial_2]], [[trial_1], [trial_2]])
         '''
         df = LoadData.mouseMovement(subj, task)
@@ -145,6 +145,9 @@ class LoadData:
                 xy_disp_ = np.diff(xy_disp_, axis=0)
 
             xy.append(xy_)
+            
+            if (task == 'three_dot') and packDot:
+                xy_disp_ = [xy_disp_[:, 0:2], xy_disp_[:, 2:4], xy_disp_[:, 4:6]]
             xy_disp.append(xy_disp_)
 
         return xy, xy_disp
